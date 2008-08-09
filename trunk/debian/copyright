@@ -1,0 +1,21 @@
+This package was debianized by Heikki Linnakangas <hlinnaka@iki.fi> on
+Sat, 05 Jul 2008 14:09:21 +0300.
+
+It was downloaded from <http://users.tkk.fi/hlinnaka/flybook/>
+
+Upstream Authors:
+
+    Heikki Linnakangas <hlinnaka@iki.fi>
+    Elmar Hanlhofer <development@plop.at>
+    Christoph Pittracher <pitt@segfault.info>
+
+Copyright:
+
+    <Copyright (C) 2005-2008 Heikki Linnakangas>
+    <Copyright (C) 2005-2008 Elman Hanlhofer>
+    <Copyright (C) 2005-2006 Christoph Pittracher>
+
+License:
+
+    It may be redistributed under the terms of the GNU GPL, Version 2 
+    found on Debian systems in the file /usr/share/common-licenses/GPL .
