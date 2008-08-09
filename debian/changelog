@@ -1,0 +1,6 @@
+penmountlpc-source (1.0) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Heikki Linnakangas <heikki.linnakangas@iki.fi>  Sat, 05 Jul 2008 14:09:21 +0300
+
