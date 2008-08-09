@@ -1,24 +1,37 @@
-//==========================================================================
-// eventdevice driver for penmount touchscreen
-// Licence GPL
-//
-// Driver written by Heikki Linnakangas <heikki.linnakangas@iki.fi>
-// Driver modified by Elmar Hanlhofer development@plop.at http://www.plop.at
-// Driver modified by Christoph Pittracher <pitt@segfault.info>
-// Driver modified by Tobias Wiese
-//
-// Changelog:
-//
-//   20080801 modified to support flybook V5 touchscreen by Tobias Wiese
-//   20080529 fixed small 2.6.24 issues by Elmar Hanlhofer
-//   20060113 fixed small 2.6.15 issues by Christoph Pittracher
-//   20050902 cleanup, irq data check by Christoph Pittracher
-//   20050624 init sequence and timeout optimized by Elmar Hanlhofer
-//   20050622 some evbit fixes by Christoph Pittracher
-//   20050617 added init sequence and more debug messages by Elmar Hanlhofer
-//   20050213 initial version by Heikki Linnakangas
-// 
-//==========================================================================
+/*
+ * eventdevice driver for Penmount LPC touchscreen, that comes with
+ * Dialogue Flybook notebooks.
+ *
+ * Changelog:
+ *
+ *   20080801 modified to support flybook V5 touchscreen by Tobias Wiese
+ *   20080529 fixed small 2.6.24 issues by Elmar Hanlhofer
+ *   20060113 fixed small 2.6.15 issues by Christoph Pittracher
+ *   20050902 cleanup, irq data check by Christoph Pittracher
+ *   20050624 init sequence and timeout optimized by Elmar Hanlhofer
+ *   20050622 some evbit fixes by Christoph Pittracher
+ *   20050617 added init sequence and more debug messages by Elmar Hanlhofer
+ *   20050213 initial version by Heikki Linnakangas
+ * 
+ * Copyright 2005-2008 Heikki Linnakangas
+ * Copyright 2005,2008 Elmar Hanlhofer
+ * Copyright 2005-2006 Christoph Pittracher
+ * Copyright 2008      Tobias Wiese
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+ */
 
 #include <linux/input.h>
 #include <linux/module.h>
@@ -66,7 +79,6 @@ static void poll_penmount(void)
 	}
 }
 
-//static irqreturn_t penmount_interrupt(int irq, void *dummy, struct pt_regs *fp) {
 static irqreturn_t penmount_interrupt(int irq, void *dummy)
 {
 	poll_penmount();
