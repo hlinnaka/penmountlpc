@@ -8,6 +8,7 @@
 //
 // Changelog:
 //
+//   20080529 fixed small 2.6.24 issues by Elmar Hanlhofer
 //   20060113 fixed small 2.6.15 issues by Christoph Pittracher
 //   20050902 cleanup, irq data check by Christoph Pittracher
 //   20050624 init sequence and timeout optimized by Elmar Hanlhofer
@@ -56,13 +57,14 @@ static void poll_penmount(void) {
 
     input_report_abs(penmount_dev, ABS_X, xa * 128 + xb);
     input_report_abs(penmount_dev, ABS_Y, ya * 128 + yb);
-    input_report_key(penmount_dev, BTN_LEFT, (touch & 0x40) != 0);
+    input_report_key(penmount_dev, BTN_TOUCH, (touch & 0x40) != 0);
     input_sync(penmount_dev);
 //    printk(KERN_INFO "penmount (%d|%d) %s\n", xa*128+xb, ya*128+yb, (touch & 0x40) ? "press" : "release");
   }
 }
 
-static irqreturn_t penmount_interrupt(int irq, void *dummy, struct pt_regs *fp) {
+//static irqreturn_t penmount_interrupt(int irq, void *dummy, struct pt_regs *fp) {
+static irqreturn_t penmount_interrupt(int irq, void *dummy) {
   poll_penmount();
   return IRQ_HANDLED;
 }
@@ -105,9 +107,9 @@ static int __init penmount_init(void) {
   input_set_abs_params(penmount_dev, ABS_Y, 0, 128 * 7, 4, 0);
 
   penmount_dev->evbit[0] = BIT(EV_ABS) | BIT(EV_KEY);
-  penmount_dev->absbit[LONG(ABS_X)] = BIT(ABS_X);
-  penmount_dev->absbit[LONG(ABS_Y)] |= BIT(ABS_Y);
-  penmount_dev->keybit[LONG(BTN_LEFT)] |= BIT(BTN_LEFT);
+  penmount_dev->absbit[BIT_WORD(ABS_X)] = BIT(ABS_X);
+  penmount_dev->absbit[BIT_WORD(ABS_Y)] |= BIT(ABS_Y);
+  penmount_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH); 
   
   input_register_device(penmount_dev);
   printk(KERN_ERR "penmountlpc.c: init finished\n");
