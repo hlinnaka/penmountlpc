@@ -81,6 +81,7 @@ static int __init penmount_init(void)
 	unsigned char initRData[] =  { 0x09, 0x09, 0x09, 0xf0, 0x09 };
 	int initDataCount = 0;
 	int timeout;
+	int err;
 
 	for (initDataCount = 0; initDataCount < PENMOUNT_INITMAX; initDataCount++) {
 		outb_p(initWData[initDataCount], initPorts[initDataCount]);
@@ -118,7 +119,12 @@ static int __init penmount_init(void)
 	// TODO: Use BTN_LEFT here for evdev
 	penmount_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH); 
 	
-	input_register_device(penmount_dev);
+	err = input_register_device(penmount_dev);
+	if (err)
+	{
+		input_free_device(penmount_dev);
+		return err;
+	}
 	printk(KERN_ERR "penmountlpc.c: init finished\n");
 
 	return 0;
