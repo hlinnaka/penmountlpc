@@ -1,14 +1,24 @@
+//==========================================================================
+// eventdevice driver for penmount touchscreen
+// Licence GPL
 //
-// Driver modified by Elmar Hanlhofer development@plop.at
-// http://www.plop.at
+// Driver written by Heikki Linnakangas <heikki.linnakangas@iki.fi>
+// Driver modified by Elmar Hanlhofer development@plop.at http://www.plop.at
+// Driver modified by Christoph Pittracher <pitt@segfault.info>
 //
-// 20050617 added init sequence and more debug messages
+// Changelog:
 //
+//   20050624 init sequence and timeout optimized by Elmar Hanlhofer
+//   20050622 some evbit fixes by Christoph Pittracher
+//   20050617 added init sequence and more debug messages by Elmar Hanlhofer
+// 
+//==========================================================================
 
 #include <linux/input.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
+#include <linux/delay.h>
 
 #include <asm/irq.h>
 #include <asm/io.h>
@@ -23,9 +33,9 @@ MODULE_LICENSE("GPL");
 
 #define PENMOUNT_PORT 0x0338
 #define PENMOUNT_IRQ 6
-#define PENMOUNT_INITMAX 7
+#define PENMOUNT_INITMAX 5
 
-#define TIMEOUT 2000000
+#define TIMEOUT 25000
 
 struct input_dev penmount_dev;
 
@@ -49,9 +59,9 @@ static void poll_penmount(void) {
 
     input_report_abs(&penmount_dev, ABS_X, xa*128+xb);
     input_report_abs(&penmount_dev, ABS_Y, ya*128+yb);
-    input_report_key(&penmount_dev, BTN_TOUCH, !(touch & 0x40));
+    input_report_key(&penmount_dev, BTN_LEFT, touch & 0x40);
     input_sync(&penmount_dev);
-//        printk(KERN_ERR "penmountlpc.c: key\n");
+//    printk(KERN_INFO "penmount (%d|%d) %s\n", xa*128+xb, ya*128+yb, (touch & 0x40) ? "press" : "release");
 
   }
 }
@@ -66,31 +76,35 @@ static irqreturn_t penmount_interrupt(int irq, void *dummy, struct pt_regs *fp)
 static int __init penmount_init(void)
 {
 
-  unsigned short initWPorts[]={0x33c,0x33c,0x33c,0x338,0x33c,0x33c,0x33c};
-  unsigned short initRPorts[]={0x33c,0x33c,0x33c,0x338,0x33c,0x338,0x338};
-
-  unsigned char initWData[]={0xf8,0xfb,0xf0,0xf2,0xf1,0xf9,0xf2};
-  unsigned char initRData[]={0x09,0x09,0x09,0xf0,0x09,0xf9,0xf2};
+  unsigned short initPorts[]={+4,+4,+4,+0,+4,+4};
+    
+  unsigned char initWData[]={0xf8,0xfb,0xf0,0xf2,0xf1,0xf9};
+  unsigned char initRData[]={0x09,0x09,0x09,0xf0,0x09};
+    
+  unsigned short addr = PENMOUNT_PORT;	
 
   int initDataCount=0;
   int timeout;
+    
+
+  for (initDataCount=0;initDataCount<PENMOUNT_INITMAX;initDataCount++) {
+        outb_p(initWData[initDataCount],initPorts[initDataCount]+addr);
+        timeout=0;
+        while ((timeout++<TIMEOUT) && 
+	       (initRData[initDataCount]!=inb_p(initPorts[initDataCount]+addr))) 
+	  udelay(10);
+	
+	if (timeout>TIMEOUT) {
+	    printk(KERN_ERR "penmountlpc.c: timeout\n");
+	    return -EPERM;
+	}
+  }
+
+  outb_p(initWData[PENMOUNT_INITMAX],initPorts[PENMOUNT_INITMAX]+addr);
 
 
- 
-    for (initDataCount=0;initDataCount<PENMOUNT_INITMAX;initDataCount++) {
-     printk(KERN_ERR "penmountlpc.c: count %d\n", initDataCount);
-	outb_p(initWData[initDataCount],initWPorts[initDataCount]);
-	timeout=0;
-	while ((timeout++<TIMEOUT) && (initRData[initDataCount]!=inb_p(initRPorts[initDataCount]))) {}
-	if (timeout>TIMEOUT) {	
-	  printk(KERN_ERR "penmountlpc.c: INIT TIMEOUT\n");
-	  return -EBUSY;
-        }
-    }
 
-
- if (request_irq(PENMOUNT_IRQ, penmount_interrupt, 0, "penmountlpc", NULL)) {
-    printk(KERN_ERR "penmountlpc.c: Can't allocate irq %d\n", PENMOUNT_IRQ);
+  if (request_irq(PENMOUNT_IRQ, penmount_interrupt, 0, "penmountlpc", NULL)) {
     return -EBUSY;
   }
 
@@ -100,20 +114,13 @@ static int __init penmount_init(void)
   input_set_abs_params(&penmount_dev, ABS_X, 0, 128*7, 4, 0);
   input_set_abs_params(&penmount_dev, ABS_Y, 0, 128*7, 4, 0);
 
-  penmount_dev.evbit[0] = BIT(EV_ABS) | BIT(EV_KEY) | BIT(EV_KEY);
+  penmount_dev.evbit[0] = BIT(EV_ABS) | BIT(EV_KEY);
   penmount_dev.absbit[LONG(ABS_X)] = BIT(ABS_X);
   penmount_dev.absbit[LONG(ABS_Y)] |= BIT(ABS_Y);
-  penmount_dev.absbit[LONG(ABS_PRESSURE)] |= BIT(ABS_PRESSURE);
-  penmount_dev.keybit[LONG(BTN_TOOL_FINGER)] |= BIT(BTN_TOOL_FINGER);
-
+  penmount_dev.keybit[LONG(BTN_LEFT)] |= BIT(BTN_LEFT);
+  
   input_register_device(&penmount_dev);
 
-  
-  
-  
-  
-  
-  
   printk(KERN_ERR "penmountlpc.c: init finished\n");
 
   return 0;
@@ -128,3 +135,4 @@ static void __exit penmount_exit(void)
 
 module_init(penmount_init);
 module_exit(penmount_exit);
+
