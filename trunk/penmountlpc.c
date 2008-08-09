@@ -8,6 +8,7 @@
 //
 // Changelog:
 //
+//   20080801 modified to support flybook V5 touchscreen by Tobias Wiese
 //   20080529 fixed small 2.6.24 issues by Elmar Hanlhofer
 //   20060113 fixed small 2.6.15 issues by Christoph Pittracher
 //   20050902 cleanup, irq data check by Christoph Pittracher
@@ -39,27 +40,28 @@ struct input_dev* penmount_dev;
 
 static void poll_penmount(void) {
   unsigned short xa, xb, ya, yb;
-  unsigned char touch, flag;
-
-  flag = inb_p(PENMOUNT_PORT + 4);
-  if (flag) {
+  unsigned char touch;
+    udelay(1000);
     touch = inb_p(PENMOUNT_PORT);
+    udelay(1000);
     xa = inb_p(PENMOUNT_PORT);
-    inb_p(PENMOUNT_PORT + 4);
+    udelay(1000);
     xb = inb_p(PENMOUNT_PORT);
-    inb_p(PENMOUNT_PORT + 4);
+    udelay(1000);
     ya = inb_p(PENMOUNT_PORT);
-    inb_p(PENMOUNT_PORT + 4);
+    udelay(1000);
     yb = inb_p(PENMOUNT_PORT);
-
-    if ((touch | 0x40) != 0xFF || (xa & 0xF8) != 0 || (ya & 0xF8) != 0 || (xb & 0x80) != 0 || (yb & 0x80) != 0)
-      return;
+   
+    if ((touch == 0xBF || touch == 0xFF) /* Press or release */
+	&& xa < 8 && xb < 128 && ya < 8 && yb < 128)
+    {
+      //printk(KERN_INFO "penmount (%d|%d) %s\n", xb, yb, (touch & 0x40) ? "press" : "release");
 
     input_report_abs(penmount_dev, ABS_X, xa * 128 + xb);
     input_report_abs(penmount_dev, ABS_Y, ya * 128 + yb);
     input_report_key(penmount_dev, BTN_TOUCH, (touch & 0x40) != 0);
+    // TODO: Use BTN_LEFT here for evdev support
     input_sync(penmount_dev);
-//    printk(KERN_INFO "penmount (%d|%d) %s\n", xa*128+xb, ya*128+yb, (touch & 0x40) ? "press" : "release");
   }
 }
 
@@ -109,6 +111,7 @@ static int __init penmount_init(void) {
   penmount_dev->evbit[0] = BIT(EV_ABS) | BIT(EV_KEY);
   penmount_dev->absbit[BIT_WORD(ABS_X)] = BIT(ABS_X);
   penmount_dev->absbit[BIT_WORD(ABS_Y)] |= BIT(ABS_Y);
+  // TODO: Use BTN_LEFT here for evdev
   penmount_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH); 
   
   input_register_device(penmount_dev);
