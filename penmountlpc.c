@@ -1,3 +1,10 @@
+//
+// Driver modified by Elmar Hanlhofer development@plop.at
+// http://www.plop.at
+//
+// 20050617 added init sequence and more debug messages
+//
+
 #include <linux/input.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -16,6 +23,9 @@ MODULE_LICENSE("GPL");
 
 #define PENMOUNT_PORT 0x0338
 #define PENMOUNT_IRQ 6
+#define PENMOUNT_INITMAX 7
+
+#define TIMEOUT 2000000
 
 struct input_dev penmount_dev;
 
@@ -41,6 +51,8 @@ static void poll_penmount(void) {
     input_report_abs(&penmount_dev, ABS_Y, ya*128+yb);
     input_report_key(&penmount_dev, BTN_TOUCH, !(touch & 0x40));
     input_sync(&penmount_dev);
+//        printk(KERN_ERR "penmountlpc.c: key\n");
+
   }
 }
 
@@ -53,10 +65,35 @@ static irqreturn_t penmount_interrupt(int irq, void *dummy, struct pt_regs *fp)
 
 static int __init penmount_init(void)
 {
-  if (request_irq(PENMOUNT_IRQ, penmount_interrupt, 0, "penmountlpc", NULL)) {
+
+  unsigned short initWPorts[]={0x33c,0x33c,0x33c,0x338,0x33c,0x33c,0x33c};
+  unsigned short initRPorts[]={0x33c,0x33c,0x33c,0x338,0x33c,0x338,0x338};
+
+  unsigned char initWData[]={0xf8,0xfb,0xf0,0xf2,0xf1,0xf9,0xf2};
+  unsigned char initRData[]={0x09,0x09,0x09,0xf0,0x09,0xf9,0xf2};
+
+  int initDataCount=0;
+  int timeout;
+
+
+ 
+    for (initDataCount=0;initDataCount<PENMOUNT_INITMAX;initDataCount++) {
+     printk(KERN_ERR "penmountlpc.c: count %d\n", initDataCount);
+	outb_p(initWData[initDataCount],initWPorts[initDataCount]);
+	timeout=0;
+	while ((timeout++<TIMEOUT) && (initRData[initDataCount]!=inb_p(initRPorts[initDataCount]))) {}
+	if (timeout>TIMEOUT) {	
+	  printk(KERN_ERR "penmountlpc.c: INIT TIMEOUT\n");
+	  return -EBUSY;
+        }
+    }
+
+
+ if (request_irq(PENMOUNT_IRQ, penmount_interrupt, 0, "penmountlpc", NULL)) {
     printk(KERN_ERR "penmountlpc.c: Can't allocate irq %d\n", PENMOUNT_IRQ);
     return -EBUSY;
   }
+
 
   init_input_dev(&penmount_dev);
 
@@ -71,6 +108,14 @@ static int __init penmount_init(void)
 
   input_register_device(&penmount_dev);
 
+  
+  
+  
+  
+  
+  
+  printk(KERN_ERR "penmountlpc.c: init finished\n");
+
   return 0;
 }
 
@@ -78,6 +123,7 @@ static void __exit penmount_exit(void)
 {
   input_unregister_device(&penmount_dev);
   free_irq(PENMOUNT_IRQ, NULL);
+  printk(KERN_ERR "penmountlpc.c: driver removed\n");
 }
 
 module_init(penmount_init);
