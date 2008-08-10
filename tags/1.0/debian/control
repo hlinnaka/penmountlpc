@@ -1,0 +1,16 @@
+Source: penmountlpc-source
+Section: misc
+Priority: optional
+Maintainer: Heikki Linnakangas <heikki.linnakangas@iki.fi>
+Build-Depends: debhelper (>= 4.0.0), bzip2
+Standards-Version: 3.8.0
+
+Package: penmountlpc-source
+Architecture: all
+Depends: module-assistant, bzip2, debhelper (>= 5.0.37)
+Description: source for the penmountlpc driver
+ The penmountlpc driver provides source for the kernel module required for
+ using the touchscreen on a Dialogue Flybook A33i model on Linux.
+ .
+ This package contains the module source. The kernel driver can be built from
+ it using module-assistant or make-kpkg.
