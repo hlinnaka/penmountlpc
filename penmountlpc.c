@@ -4,6 +4,7 @@
  *
  * Changelog:
  *
+ *   20080810 moved to version control at http://penmountlpc.googlecode.com/
  *   20080801 modified to support flybook V5 touchscreen by Tobias Wiese
  *   20080529 fixed small 2.6.24 issues by Elmar Hanlhofer
  *   20060113 fixed small 2.6.15 issues by Christoph Pittracher
@@ -85,7 +86,7 @@ static irqreturn_t penmount_interrupt(int irq, void *dummy)
 	return IRQ_HANDLED;
 }
 
-static int __init penmount_init(void)
+static int penmount_detect_init(void)
 {
 #define PENMOUNT_INITMAX 5
 	unsigned short initPorts[] = { PENMOUNT_PORT+4, PENMOUNT_PORT+4, PENMOUNT_PORT+4, PENMOUNT_PORT, PENMOUNT_PORT+4, PENMOUNT_PORT+4 };
@@ -93,7 +94,6 @@ static int __init penmount_init(void)
 	unsigned char initRData[] =  { 0x09, 0x09, 0x09, 0xf0, 0x09 };
 	int initDataCount = 0;
 	int timeout;
-	int err;
 
 	for (initDataCount = 0; initDataCount < PENMOUNT_INITMAX; initDataCount++) {
 		outb_p(initWData[initDataCount], initPorts[initDataCount]);
@@ -102,19 +102,40 @@ static int __init penmount_init(void)
 			udelay(10);
 
 		if (timeout == 0) {
-			printk(KERN_ERR "penmountlpc.c: timeout\n");
-			return -EPERM;
+			printk(KERN_ERR "penmountlpc.c: timeout during initialization\n");
+			return -ENODEV;
 		}
 	}
 
 	outb_p(initWData[PENMOUNT_INITMAX], initPorts[PENMOUNT_INITMAX]);
 
-	if (request_irq(PENMOUNT_IRQ, penmount_interrupt, 0, "penmountlpc", NULL))
+	return 0;
+}
+
+static int __init penmount_init(void)
+{
+	int err;
+	if ((err = request_irq(PENMOUNT_IRQ, penmount_interrupt, 0, "penmountlpc", NULL)))
+		return err;
+
+	if (!request_region(PENMOUNT_PORT, 8, "penmountlpc")) {
+		free_irq(PENMOUNT_IRQ, NULL);
 		return -EBUSY;
+	}
+
+	if ((err = penmount_detect_init())) {
+		release_region(PENMOUNT_PORT, 8);
+		free_irq(PENMOUNT_IRQ, NULL);
+		return err;
+	}
 
 	penmount_dev = input_allocate_device();
 	if (!penmount_dev)
+	{
+		release_region(PENMOUNT_PORT, 8);
+		free_irq(PENMOUNT_IRQ, NULL);
 		return -ENOMEM;
+	}
 
 	penmount_dev->name = "PenmountLPC TouchScreen";
 	penmount_dev->id.bustype = BUS_ISA;
@@ -135,16 +156,19 @@ static int __init penmount_init(void)
 	if (err)
 	{
 		input_free_device(penmount_dev);
+		release_region(PENMOUNT_PORT, 8);
+		free_irq(PENMOUNT_IRQ, NULL);
 		return err;
 	}
-	printk(KERN_ERR "penmountlpc.c: init finished\n");
 
+	printk(KERN_ERR "penmountlpc.c: init finished\n");
 	return 0;
 }
 
 static void __exit penmount_exit(void)
 {
 	input_unregister_device(penmount_dev);
+	release_region(PENMOUNT_PORT, 8);
 	free_irq(PENMOUNT_IRQ, NULL);
 	printk(KERN_ERR "penmountlpc.c: driver removed\n");
 }
