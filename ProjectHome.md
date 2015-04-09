@@ -1,0 +1,1 @@
+The penmountlpc driver provides a kernel module for using the touchscreen on a Dialogue Flybook on Linux.
